@@ -1,0 +1,17 @@
+.env
+venv/
+__pycache__/
+*.pyc
+
+# Pipeline-only processed files (not needed at runtime)
+data/processed/matches_clean.parquet
+data/processed/elo_ratings.parquet
+data/processed/players_lookup.parquet
+data/processed/active_players.parquet
+data/raw/
+
+# Runtime-essential files are committed:
+# data/tennis.db
+# data/models/xgboost_model.pkl
+# data/models/model_metadata.json
+# data/processed/charting_player_stats.parquet

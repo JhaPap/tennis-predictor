@@ -1,0 +1,45 @@
+# Claude Code local settings
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+backend/venv/
+backend/.venv/
+*.egg-info/
+.pytest_cache/
+
+# Environment variables (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.vercel/
+
+# Pipeline-only data files (not needed at runtime)
+atp_tennis.csv
+backend/data/raw/
+backend/data/processed/matches_clean.parquet
+backend/data/processed/elo_ratings.parquet
+backend/data/processed/players_lookup.parquet
+backend/data/processed/active_players.parquet
+
+# Keep these runtime-essential files (un-ignore):
+!backend/data/tennis.db
+!backend/data/models/xgboost_model.pkl
+!backend/data/models/model_metadata.json
+!backend/data/processed/charting_player_stats.parquet
+
+# Jupyter / misc
+.ipynb_checkpoints/
+*.log
