@@ -210,7 +210,7 @@ export default function HistoryPage() {
                   width={38}
                 />
                 <Tooltip
-                  formatter={(value: unknown, name: string) => {
+                  formatter={(value: unknown, name: string | undefined) => {
                     if (name === "actual_rate") return [`${Math.round((value as number) * 100)}%`, "Actual Rate"];
                     if (name === "predicted_avg") return [`${Math.round((value as number) * 100)}%`, "Predicted Avg"];
                     return [value as number, "Count"];
