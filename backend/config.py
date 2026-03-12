@@ -128,6 +128,7 @@ CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"] + [
     o.strip() for o in _extra.split(",") if o.strip()
 ]
 
+ENVIRONMENT = _os.environ.get("ENVIRONMENT", "development")
 SECRET_KEY = _os.environ.get("SECRET_KEY", "change-me-in-production")
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 RESEND_API_KEY = _os.environ.get("RESEND_API_KEY", "")

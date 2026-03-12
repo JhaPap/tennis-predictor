@@ -1,14 +1,14 @@
 from datetime import date, datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 # --- Auth ---
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    username: str
-    password: str
+    username: str = Field(min_length=3, max_length=32)
+    password: str = Field(min_length=8, max_length=128)
 
 
 class LoginRequest(BaseModel):

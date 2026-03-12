@@ -3,17 +3,28 @@ from dotenv import load_dotenv
 load_dotenv()
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from config import CORS_ORIGINS, MODEL_METADATA_PATH
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from config import CORS_ORIGINS, ENVIRONMENT, MODEL_METADATA_PATH
 from api.deps import get_current_user
+from api.limiter import limiter
 from api.routers import predictions, players, matches, leaderboard, tournaments, simulate
 from api.routers import auth
 from db.database import Base, engine, UserBase, user_engine
+
+_is_prod = ENVIRONMENT == "production"
 
 app = FastAPI(
     title="Tennis Predictor API",
     description="ATP match prediction using Elo ratings and XGBoost",
     version="1.0.0",
+    docs_url=None if _is_prod else "/docs",
+    redoc_url=None if _is_prod else "/redoc",
+    openapi_url=None if _is_prod else "/openapi.json",
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

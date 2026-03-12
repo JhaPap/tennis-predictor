@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from api.deps import get_current_user, get_user_db
 from api.email import send_verification_email
+from api.limiter import limiter
 from api.schemas import LoginRequest, LoginResponse, RegisterRequest, UserOut
 from api.security import (
     create_access_token,
@@ -27,7 +28,8 @@ class EmailBody(BaseModel):
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=UserOut)
-def register(body: RegisterRequest, db: Session = Depends(get_user_db)):
+@limiter.limit("5/minute")
+def register(request: Request, body: RegisterRequest, db: Session = Depends(get_user_db)):
     if db.query(User).filter(User.email == body.email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
     if db.query(User).filter(User.username == body.username).first():
@@ -50,7 +52,8 @@ def register(body: RegisterRequest, db: Session = Depends(get_user_db)):
 
 
 @router.post("/login", response_model=LoginResponse)
-def login(body: LoginRequest, db: Session = Depends(get_user_db)):
+@limiter.limit("10/minute")
+def login(request: Request, body: LoginRequest, db: Session = Depends(get_user_db)):
     user = db.query(User).filter(User.email == body.email).first()
     if user is None or not verify_password(body.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
@@ -87,7 +90,8 @@ def verify_email(body: TokenBody, db: Session = Depends(get_user_db)):
 
 
 @router.post("/resend-verification")
-def resend_verification(body: EmailBody, db: Session = Depends(get_user_db)):
+@limiter.limit("3/minute")
+def resend_verification(request: Request, body: EmailBody, db: Session = Depends(get_user_db)):
     user = db.query(User).filter(User.email == body.email).first()
     # Always return 200 to avoid email enumeration
     if user is None or user.is_email_verified:
