@@ -19,6 +19,16 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (username.length < 3) {
+      setError("Username must be at least 3 characters");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+
     setLoading(true);
     try {
       await register({ email, username, password });
@@ -81,6 +91,7 @@ export default function RegisterPage() {
                 id="username"
                 type="text"
                 autoComplete="username"
+                placeholder="At least 3 characters"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -92,6 +103,7 @@ export default function RegisterPage() {
                 id="password"
                 type="password"
                 autoComplete="new-password"
+                placeholder="At least 8 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
