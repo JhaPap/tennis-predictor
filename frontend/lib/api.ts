@@ -1,4 +1,5 @@
 import {
+  AuthResponse,
   CalibrationBucket,
   FeaturedMatch,
   H2HMatch,
@@ -14,21 +15,72 @@ import {
   TournamentBracket,
   TournamentSummary,
   TrendingEntry,
+  User,
 } from "./types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("auth_token");
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
+  const token = getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options?.headers as Record<string, string>),
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(error.detail || "API error");
   }
   return res.json();
 }
+
+// Auth
+export const register = (body: {
+  email: string;
+  username: string;
+  password: string;
+}) =>
+  apiFetch<User>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const login = async (body: {
+  email: string;
+  password: string;
+}): Promise<AuthResponse> => {
+  const data = await apiFetch<AuthResponse>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (typeof window !== "undefined") {
+    localStorage.setItem("auth_token", data.access_token);
+    document.cookie = `auth_token=${data.access_token}; path=/; max-age=${7 * 24 * 3600}; SameSite=Lax`;
+  }
+  return data;
+};
+
+export const verifyEmail = (token: string) =>
+  apiFetch<{ message: string }>("/api/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+
+export const resendVerification = (email: string) =>
+  apiFetch<{ message: string }>("/api/auth/resend-verification", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+
+export const getCurrentUser = () => apiFetch<User>("/api/auth/me");
 
 // Players
 export const searchPlayers = (search: string, limit = 20) =>

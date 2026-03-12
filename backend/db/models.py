@@ -1,9 +1,22 @@
 from datetime import datetime
 from sqlalchemy import (
-    Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, String
+    Boolean, Column, Date, DateTime, Float, ForeignKey, Index, Integer, String
 )
 from sqlalchemy.orm import relationship
 from db.database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id                        = Column(Integer, primary_key=True, index=True)
+    email                     = Column(String, unique=True, index=True, nullable=False)
+    username                  = Column(String, unique=True, index=True, nullable=False)
+    hashed_password           = Column(String, nullable=False)
+    is_email_verified         = Column(Boolean, default=False, nullable=False)
+    verification_token        = Column(String, nullable=True, index=True)
+    verification_token_expires = Column(DateTime, nullable=True)
+    created_at                = Column(DateTime, default=datetime.utcnow)
 
 
 class Player(Base):

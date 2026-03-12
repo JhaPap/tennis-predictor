@@ -1,3 +1,16 @@
+export interface User {
+  id: number;
+  email: string;
+  username: string;
+  is_email_verified: boolean;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
 export interface PlayerSummary {
   id: number;
   name: string;

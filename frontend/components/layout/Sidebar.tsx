@@ -4,9 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
 import {
   BarChart3,
   Home,
+  LogOut,
   Trophy,
   Users,
   TrendingUp,
@@ -30,6 +32,7 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const [hovered, setHovered] = useState(false);
+  const { user, logout } = useAuth();
 
   const expanded = hovered;
 
@@ -94,6 +97,27 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      {/* User + Logout */}
+      <div className="px-2 pb-2 border-t border-sidebar-border pt-2">
+        {expanded && user && (
+          <div className="px-3 py-1.5 mb-1">
+            <p className="text-xs font-medium text-sidebar-foreground truncate">{user.username}</p>
+            <p className="text-[10px] text-sidebar-foreground/50 truncate">{user.email}</p>
+          </div>
+        )}
+        <button
+          onClick={logout}
+          title={!expanded ? "Logout" : undefined}
+          className={cn(
+            "w-full flex items-center gap-3 py-2.5 text-sm font-medium rounded-sm text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-all",
+            expanded ? "px-3" : "justify-center px-0"
+          )}
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          {expanded && "Logout"}
+        </button>
+      </div>
 
       {/* Footer */}
       {expanded && (

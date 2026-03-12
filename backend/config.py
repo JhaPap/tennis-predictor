@@ -126,3 +126,9 @@ _extra = _os.environ.get("CORS_ORIGINS", "")
 CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"] + [
     o.strip() for o in _extra.split(",") if o.strip()
 ]
+
+SECRET_KEY = _os.environ.get("SECRET_KEY", "change-me-in-production")
+ACCESS_TOKEN_EXPIRE_DAYS = 7
+RESEND_API_KEY = _os.environ.get("RESEND_API_KEY", "")
+RESEND_FROM_EMAIL = _os.environ.get("RESEND_FROM_EMAIL", "onboarding@resend.dev")
+FRONTEND_URL = _os.environ.get("FRONTEND_URL", "http://localhost:3000")

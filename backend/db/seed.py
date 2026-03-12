@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import MATCHES_CLEAN_PATH, ELO_RATINGS_PATH, PROCESSED_DIR
 from db.database import Base, engine, SessionLocal
-from db.models import Match, Player
+from db.models import Match, Player, User
 
 
 def safe_int(v):
@@ -28,7 +28,12 @@ def safe_float(v):
 
 def seed_database():
     print("Creating tables...")
-    Base.metadata.drop_all(bind=engine)
+    # Drop only sports tables — never the users table
+    sports_tables = [Match.__table__, Player.__table__]
+    # Also drop prediction_log if it exists
+    from db.models import PredictionLog
+    sports_tables.append(PredictionLog.__table__)
+    Base.metadata.drop_all(bind=engine, tables=sports_tables)
     Base.metadata.create_all(bind=engine)
 
     session = SessionLocal()
