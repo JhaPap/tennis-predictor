@@ -79,6 +79,18 @@ export const verifyEmail = (token: string) =>
     body: JSON.stringify({ token }),
   });
 
+export const forgotPassword = (email: string) =>
+  apiFetch<{ message: string }>("/api/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+
+export const resetPassword = (token: string, password: string) =>
+  apiFetch<{ message: string }>("/api/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
+  });
+
 export const resendVerification = (email: string) =>
   apiFetch<{ message: string }>("/api/auth/resend-verification", {
     method: "POST",

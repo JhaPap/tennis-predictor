@@ -51,6 +51,15 @@ app.include_router(simulate.router, dependencies=_auth_dep)
 def on_startup():
     Base.metadata.create_all(bind=engine)
     UserBase.metadata.create_all(bind=user_engine)
+    # Add password-reset columns if they don't exist yet (safe to run repeatedly)
+    from sqlalchemy import text
+    with user_engine.connect() as conn:
+        for col, col_type in [("reset_token", "TEXT"), ("reset_token_expires", "DATETIME")]:
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {col_type}"))
+                conn.commit()
+            except Exception:
+                pass  # Column already exists
 
 
 @app.get("/api/health")

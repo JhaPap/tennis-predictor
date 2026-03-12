@@ -2,38 +2,53 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
+import { forgotPassword } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { BarChart3 } from "lucide-react";
 
-export default function LoginPage() {
-  const { login } = useAuth();
-  const router = useRouter();
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      await login(email, password);
-      router.push("/");
+      await forgotPassword(email);
+      setDone(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Login failed";
-      if (msg.toLowerCase().includes("not verified") || msg.toLowerCase().includes("email address not verified")) {
-        setError("Your email is not verified. Check your inbox or resend below.");
-      } else {
-        setError(msg);
-      }
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
+  }
+
+  if (done) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-sm text-center">
+          <CardHeader className="space-y-2">
+            <div className="flex justify-center">
+              <BarChart3 className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle>Check your email</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              If <strong>{email}</strong> is registered, you&apos;ll receive a reset link shortly. It expires in 1 hour.
+            </p>
+            <Link href="/auth/login" className="text-primary hover:underline text-sm">
+              Back to login
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -46,7 +61,9 @@ export default function LoginPage() {
           <CardTitle className="text-xl">
             Tennis<span className="text-primary">Predictor</span>
           </CardTitle>
-          <p className="text-sm text-muted-foreground">Sign in to your account</p>
+          <p className="text-sm text-muted-foreground">
+            Enter your email and we&apos;ll send you a reset link
+          </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -61,33 +78,14 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium" htmlFor="password">Password</label>
-                <Link href="/auth/forgot-password" className="text-xs text-primary hover:underline">
-                  Forgot password?
-                </Link>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
+            {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in…" : "Sign in"}
+              {loading ? "Sending…" : "Send reset link"}
             </Button>
           </form>
           <p className="text-center text-sm text-muted-foreground mt-4">
-            No account?{" "}
-            <Link href="/auth/register" className="text-primary hover:underline">
-              Register
+            <Link href="/auth/login" className="text-primary hover:underline">
+              Back to login
             </Link>
           </p>
         </CardContent>

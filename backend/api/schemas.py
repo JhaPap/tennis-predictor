@@ -32,6 +32,15 @@ class LoginResponse(BaseModel):
     user: UserOut
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str = Field(min_length=8, max_length=128)
+
+
 # --- Prediction ---
 
 class PredictRequest(BaseModel):
