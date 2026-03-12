@@ -3,10 +3,10 @@ from sqlalchemy import (
     Boolean, Column, Date, DateTime, Float, ForeignKey, Index, Integer, String
 )
 from sqlalchemy.orm import relationship
-from db.database import Base
+from db.database import Base, UserBase
 
 
-class User(Base):
+class User(UserBase):
     __tablename__ = "users"
 
     id                        = Column(Integer, primary_key=True, index=True)

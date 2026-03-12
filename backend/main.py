@@ -7,7 +7,7 @@ from config import CORS_ORIGINS, MODEL_METADATA_PATH
 from api.deps import get_current_user
 from api.routers import predictions, players, matches, leaderboard, tournaments, simulate
 from api.routers import auth
-from db.database import Base, engine
+from db.database import Base, engine, UserBase, user_engine
 
 app = FastAPI(
     title="Tennis Predictor API",
@@ -38,8 +38,8 @@ app.include_router(simulate.router, dependencies=_auth_dep)
 
 @app.on_event("startup")
 def on_startup():
-    # Create any missing tables (including users) without dropping existing data
     Base.metadata.create_all(bind=engine)
+    UserBase.metadata.create_all(bind=user_engine)
 
 
 @app.get("/api/health")

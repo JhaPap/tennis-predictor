@@ -3,7 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from api.security import decode_access_token
-from db.database import SessionLocal
+from db.database import SessionLocal, UserSessionLocal
 from db.models import User
 
 bearer_scheme = HTTPBearer()
@@ -17,9 +17,17 @@ def get_db():
         db.close()
 
 
+def get_user_db():
+    db = UserSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> User:
     token = credentials.credentials
     payload = decode_access_token(token)
