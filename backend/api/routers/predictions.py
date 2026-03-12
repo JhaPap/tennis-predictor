@@ -132,60 +132,14 @@ def model_calibration():
     if _calibration_cache is not None:
         return _calibration_cache
 
-    import pandas as pd
-    import numpy as np
-    from config import MATCHES_CLEAN_PATH, FEATURE_COLUMNS
+    import json
+    from config import CALIBRATION_PATH
 
-    if not MATCHES_CLEAN_PATH.exists():
-        raise HTTPException(status_code=503, detail="matches_clean.parquet not found. Run the pipeline first.")
+    if not CALIBRATION_PATH.exists():
+        raise HTTPException(status_code=503, detail="Calibration data not found. Run the pipeline first.")
 
-    try:
-        model, metadata = load_model()
-    except FileNotFoundError:
-        raise HTTPException(status_code=503, detail="Model not trained yet. Run the pipeline first.")
+    with open(CALIBRATION_PATH) as f:
+        data = json.load(f)
 
-    df = pd.read_parquet(MATCHES_CLEAN_PATH)
-
-    # Test set: 2024+ (use both_active filter if available)
-    if "both_active" in df.columns:
-        df = df[df["both_active"]].copy()
-    test = df[df["Date"] >= "2024-01-01"].copy()
-    if test.empty:
-        raise HTTPException(status_code=404, detail="No test data found for 2024+.")
-
-    # Use only the feature columns the model was actually trained on so that
-    # adding new features to FEATURE_COLUMNS doesn't break an existing model.
-    model_cols = metadata.get("feature_columns", FEATURE_COLUMNS)
-    available_cols = [c for c in model_cols if c in test.columns]
-    X_test = test[available_cols].values
-    y_test = test["p1_won"].values
-    probs = model.predict_proba(X_test)[:, 1]
-
-    # For below-50% predictions, flip so we always work with the favored player
-    flipped_probs = np.where(probs >= 0.5, probs, 1 - probs)
-    flipped_wins = np.where(probs >= 0.5, y_test, 1 - y_test)
-
-    # Bin into 10 buckets: 50-55, 55-60, ..., 95-100
-    bins = np.arange(0.50, 1.01, 0.05)
-    bucket_labels = [f"{int(b*100)}–{int((b+0.05)*100)}%" for b in bins[:-1]]
-
-    buckets = []
-    for i, (lo, label) in enumerate(zip(bins[:-1], bucket_labels)):
-        hi = bins[i + 1]
-        mask = (flipped_probs >= lo) & (flipped_probs < hi)
-        count = int(mask.sum())
-        if count == 0:
-            predicted_avg = float(lo + 0.025)
-            actual_rate = 0.0
-        else:
-            predicted_avg = float(flipped_probs[mask].mean())
-            actual_rate = float(flipped_wins[mask].mean())
-        buckets.append(CalibrationBucket(
-            bucket_label=label,
-            predicted_avg=round(predicted_avg, 3),
-            actual_rate=round(actual_rate, 3),
-            count=count,
-        ))
-
-    _calibration_cache = buckets
+    _calibration_cache = [CalibrationBucket(**b) for b in data]
     return _calibration_cache

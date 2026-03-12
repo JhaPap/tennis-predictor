@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (
     MATCHES_CLEAN_PATH, PROCESSED_DIR, ROUND_ORDER, SERIES_TIER,
-    FEATURE_COLUMNS, CHARTING_STATS_PATH,
+    FEATURE_COLUMNS, CHARTING_STATS_PATH, CALIBRATION_PATH,
 )
 
 
@@ -383,6 +383,55 @@ def main():
 
     df_feat.to_parquet(MATCHES_CLEAN_PATH, index=False)
     print(f"Saved → {MATCHES_CLEAN_PATH}")
+
+    _compute_calibration(df_feat)
+
+
+def _compute_calibration(df: pd.DataFrame):
+    """Pre-compute calibration buckets on 2024+ test set and save to JSON."""
+    import json
+    try:
+        from ml.predictor import load_model
+        model, metadata = load_model()
+    except Exception as exc:
+        print(f"  Skipping calibration (model not available): {exc}")
+        return
+
+    if "both_active" in df.columns:
+        df = df[df["both_active"]].copy()
+    test = df[df["Date"] >= "2024-01-01"].copy()
+    if test.empty:
+        print("  Skipping calibration (no 2024+ data)")
+        return
+
+    model_cols = metadata.get("feature_columns", FEATURE_COLUMNS)
+    available_cols = [c for c in model_cols if c in test.columns]
+    probs = model.predict_proba(test[available_cols].values)[:, 1]
+    y_test = test["p1_won"].values
+
+    flipped_probs = np.where(probs >= 0.5, probs, 1 - probs)
+    flipped_wins = np.where(probs >= 0.5, y_test, 1 - y_test)
+
+    bins = np.arange(0.50, 1.01, 0.05)
+    bucket_labels = [f"{int(b*100)}–{int((b+0.05)*100)}%" for b in bins[:-1]]
+    buckets = []
+    for i, (lo, label) in enumerate(zip(bins[:-1], bucket_labels)):
+        hi = bins[i + 1]
+        mask = (flipped_probs >= lo) & (flipped_probs < hi)
+        count = int(mask.sum())
+        predicted_avg = float(flipped_probs[mask].mean()) if count > 0 else float(lo + 0.025)
+        actual_rate = float(flipped_wins[mask].mean()) if count > 0 else 0.0
+        buckets.append({
+            "bucket_label": label,
+            "predicted_avg": round(predicted_avg, 3),
+            "actual_rate": round(actual_rate, 3),
+            "count": count,
+        })
+
+    CALIBRATION_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(CALIBRATION_PATH, "w") as f:
+        json.dump(buckets, f)
+    print(f"  Calibration saved → {CALIBRATION_PATH}")
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ ELO_RATINGS_PATH = PROCESSED_DIR / "elo_ratings.parquet"
 CHARTING_STATS_PATH = PROCESSED_DIR / "charting_player_stats.parquet"
 MODEL_PATH = MODELS_DIR / "xgboost_model.pkl"
 MODEL_METADATA_PATH = MODELS_DIR / "model_metadata.json"
+CALIBRATION_PATH = MODELS_DIR / "calibration.json"
 
 SERIES_MAP = {
     "International": "ATP250",

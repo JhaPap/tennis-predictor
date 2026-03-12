@@ -38,6 +38,7 @@ backend/data/processed/active_players.parquet
 !backend/data/tennis.db
 !backend/data/models/xgboost_model.pkl
 !backend/data/models/model_metadata.json
+!backend/data/models/calibration.json
 !backend/data/processed/charting_player_stats.parquet
 
 # Jupyter / misc
