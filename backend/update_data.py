@@ -1,23 +1,19 @@
 """
-update_data.py — Pull fresh ATP match data from tennis-data.co.uk and re-run the pipeline.
+update_data.py — Pull fresh ATP match data and re-run the pipeline.
 
-Mirrors the logic of the Kaggle notebook (dissfya/atp-tennis-daily-pull):
-  - Downloads 2024, 2025, and 2026 Excel files from tennis-data.co.uk
-  - Falls back to local files in data/raw/ if the download fails
-  - Applies the same preprocessing (completed-only, Player_1/Player_2 assignment, score building)
-  - Deduplicates against the existing atp_tennis.csv
-  - Appends new matches and re-runs: clean → elo → features → seed
-  - Pass --retrain to also retrain the XGBoost model (slow, not needed for daily runs)
+Primary source:   tennis-data.co.uk Excel files
+Fallback source:  JeffSackmann/tennis_atp on GitHub (CSV, updated daily)
+
+Steps:
+  1. Try tennis-data.co.uk for each refresh year
+  2. If unavailable, download from Sackmann's GitHub repo
+  3. Deduplicate against existing atp_tennis.csv
+  4. Append new matches and re-run: clean → elo → charting → features → seed
+  - Pass --retrain to also retrain the XGBoost model (slow)
 
 Usage (from backend/ with venv active):
     python update_data.py
     python update_data.py --retrain
-
-If tennis-data.co.uk is unreachable, place the Excel files here and re-run:
-    backend/data/raw/2024.xlsx
-    backend/data/raw/2025.xlsx
-    backend/data/raw/2026.xlsx
-Download them from: http://tennis-data.co.uk/YEAR/YEAR.xlsx
 """
 
 import sys
@@ -97,6 +93,125 @@ def download_year(year: int) -> pd.DataFrame | None:
 
     print(f"  ✗  No data for {year} (network failed, no local file in data/raw/)")
     return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Sackmann (GitHub) fallback
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ATP500 tournament name fragments (lowercase) for Series classification
+_ATP500 = {
+    "dubai", "acapulco", "rotterdam", "barcelona", "hamburg",
+    "washington", "beijing", "tokyo", "vienna", "basel",
+    "rio de janeiro", "halle", "queen's club", "queens club",
+    "memphis", "marseille",
+}
+
+# Known indoor tournaments (lowercase fragments) for Court classification
+_INDOOR = {
+    "rotterdam", "vienna", "basel", "memphis", "marseille",
+    "paris", "bercy", "tokyo", "beijing", "stockholm",
+    "moscow", "metz", "montpellier", "milan", "st. petersburg",
+    "sofia", "singapore", "murray river",
+}
+
+_SACKMANN_ROUND = {
+    "R128": "1st Round", "R64": "1st Round", "R32": "2nd Round",
+    "R16": "3rd Round", "QF": "Quarterfinals", "SF": "Semifinals",
+    "F": "The Final", "RR": "Round Robin",
+}
+
+
+def _sackmann_name(full: str) -> str:
+    """Convert 'First Last' → 'Last F.' to match tennis-data.co.uk convention."""
+    parts = str(full).strip().split()
+    if len(parts) < 2:
+        return full
+    return f"{' '.join(parts[1:])} {parts[0][0].upper()}."
+
+
+def download_sackmann_year(year: int) -> pd.DataFrame | None:
+    url = f"https://raw.githubusercontent.com/JeffSackmann/tennis_atp/master/atp_matches_{year}.csv"
+    print(f"  Sackmann fallback → {url}")
+    try:
+        resp = requests.get(url, timeout=30)
+        resp.raise_for_status()
+        return pd.read_csv(BytesIO(resp.content), low_memory=False)
+    except Exception as exc:
+        print(f"  ⚠  Sackmann download failed: {exc}")
+        return None
+
+
+def process_sackmann(raw: pd.DataFrame) -> pd.DataFrame:
+    """Convert JeffSackmann/tennis_atp CSV → atp_tennis.csv column format."""
+    df = raw.copy()
+
+    # Tour-level only (skip Challengers, Davis Cup, etc.)
+    df = df[df["tourney_level"].isin(["G", "M", "A", "F"])].copy()
+    if df.empty:
+        return df
+
+    # Drop rows missing essential fields
+    for col in ["winner_name", "loser_name", "score"]:
+        df = df[df[col].notna()].copy()
+
+    # Drop retirements / walkovers
+    df = df[~df["score"].str.contains(r"W/O|RET|DEF|Def\.", na=False, case=False)].copy()
+    if df.empty:
+        return df
+
+    df["Date"] = pd.to_datetime(df["tourney_date"].astype(str), format="%Y%m%d", errors="coerce")
+    df["Tournament"] = df["tourney_name"]
+    df["Surface"] = df["surface"].str.capitalize()
+    df["Best of"] = pd.to_numeric(df["best_of"], errors="coerce").fillna(3).astype(int)
+    df["Score"] = df["score"]
+
+    # Convert names to tennis-data.co.uk format
+    df["Winner"] = df["winner_name"].apply(_sackmann_name)
+    df["Loser"] = df["loser_name"].apply(_sackmann_name)
+    df["WRank"] = pd.to_numeric(df["winner_rank"], errors="coerce")
+    df["LRank"] = pd.to_numeric(df["loser_rank"], errors="coerce")
+    df["WPts"] = pd.to_numeric(df.get("winner_rank_points", pd.Series(dtype=float)), errors="coerce")
+    df["LPts"] = pd.to_numeric(df.get("loser_rank_points", pd.Series(dtype=float)), errors="coerce")
+
+    df["Round"] = df["round"].map(_SACKMANN_ROUND).fillna("1st Round")
+
+    def _series(row) -> str:
+        lvl = row.get("tourney_level", "A")
+        name = str(row.get("tourney_name", "")).lower()
+        if lvl == "G":
+            return "Grand Slam"
+        if lvl == "F":
+            return "Masters Cup"
+        if lvl == "M":
+            return "Masters 1000"
+        return "ATP500" if any(t in name for t in _ATP500) else "ATP250"
+
+    df["Series"] = df.apply(_series, axis=1)
+    df["Court"] = df["Tournament"].apply(
+        lambda n: "Indoor" if any(t in str(n).lower() for t in _INDOOR) else "Outdoor"
+    )
+
+    # Deterministic Player_1 / Player_2 assignment
+    df["_ind"] = df.apply(
+        lambda r: hash(str(r.get("Date", "")) + str(r["Winner"]) + str(r["Loser"])) % 2,
+        axis=1,
+    )
+    df["Player_1"] = df.apply(lambda r: r["Winner"] if r["_ind"] == 0 else r["Loser"], axis=1)
+    df["Player_2"] = df.apply(lambda r: r["Winner"] if r["_ind"] == 1 else r["Loser"], axis=1)
+    df["Rank_1"] = df.apply(lambda r: r["WRank"] if r["_ind"] == 0 else r["LRank"], axis=1)
+    df["Rank_2"] = df.apply(lambda r: r["WRank"] if r["_ind"] == 1 else r["LRank"], axis=1)
+    df["Pts_1"] = df.apply(lambda r: r["WPts"] if r["_ind"] == 0 else r["LPts"], axis=1)
+    df["Pts_2"] = df.apply(lambda r: r["WPts"] if r["_ind"] == 1 else r["LPts"], axis=1)
+    df["Odd_1"] = np.nan
+    df["Odd_2"] = np.nan
+
+    keep = [
+        "Tournament", "Date", "Series", "Court", "Surface", "Round", "Best of",
+        "Player_1", "Player_2", "Winner",
+        "Rank_1", "Rank_2", "Pts_1", "Pts_2", "Odd_1", "Odd_2", "Score",
+    ]
+    return df[[c for c in keep if c in df.columns]].copy()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -263,11 +378,14 @@ def main() -> None:
     for year in REFRESH_YEARS:
         print(f"\nYear {year}")
         raw = download_year(year)
-        if raw is None or raw.empty:
-            print(f"  (no data)")
-            continue
-
-        processed = process_raw(raw)
+        if raw is not None and not raw.empty:
+            processed = process_raw(raw)
+        else:
+            sackmann_raw = download_sackmann_year(year)
+            if sackmann_raw is None or sackmann_raw.empty:
+                print(f"  (no data from any source)")
+                continue
+            processed = process_sackmann(sackmann_raw)
         if processed.empty:
             continue
 
