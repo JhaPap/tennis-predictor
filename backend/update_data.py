@@ -2,15 +2,13 @@
 update_data.py — Pull fresh ATP match data and re-run the pipeline.
 
 Primary source:   tennis-data.co.uk Excel files
-Fallback 1:       JeffSackmann/tennis_atp on GitHub (CSV, year-end publish)
-Fallback 2:       API-Tennis on RapidAPI (requires RAPIDAPI_KEY in .env)
+Fallback source:  JeffSackmann/tennis_atp on GitHub (CSV, updated daily)
 
 Steps:
   1. Try tennis-data.co.uk for each refresh year
   2. If unavailable, download from Sackmann's GitHub repo
-  3. If Sackmann also unavailable, fetch from API-Tennis (current-year gap)
-  4. Deduplicate against existing atp_tennis.csv
-  5. Append new matches and re-run: clean → elo → charting → features → seed
+  3. Deduplicate against existing atp_tennis.csv
+  4. Append new matches and re-run: clean → elo → charting → features → seed
   - Pass --retrain to also retrain the XGBoost model (slow)
 
 Usage (from backend/ with venv active):
@@ -18,9 +16,7 @@ Usage (from backend/ with venv active):
     python update_data.py --retrain
 """
 
-import os
 import sys
-import datetime
 import zipfile
 import subprocess
 import numpy as np
@@ -35,9 +31,6 @@ from config import CSV_PATH
 
 # Years to refresh — always re-download these since the files grow as matches complete
 REFRESH_YEARS = [2024, 2025, 2026]
-
-# API-Tennis (RapidAPI) — set RAPIDAPI_KEY in .env to enable
-RAPIDAPI_KEY = os.environ.get("RAPIDAPI_KEY", "")
 
 # Local fallback directory — place downloaded Excel files here if network fails
 RAW_DIR = Path(__file__).parent / "data" / "raw"
@@ -222,299 +215,6 @@ def process_sackmann(raw: pd.DataFrame) -> pd.DataFrame:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# API-Tennis (RapidAPI) — current-year fallback
-# ─────────────────────────────────────────────────────────────────────────────
-
-_APITENNNIS_BASE = "https://api-tennis.p.rapidapi.com/tennis/"
-_APITENNNIS_HOST = "api-tennis.p.rapidapi.com"
-
-# Tournament name → surface (lowercase keyword matching)
-_SURFACE_MAP: dict[str, str] = {
-    # Clay
-    "roland garros": "Clay", "french open": "Clay",
-    "monte-carlo": "Clay", "monte carlo": "Clay", "rolex monte": "Clay",
-    "madrid": "Clay", "rome": "Clay", "internazionali": "Clay",
-    "hamburg": "Clay", "barcelona": "Clay", "munich": "Clay",
-    "bucharest": "Clay", "bastad": "Clay", "umag": "Clay",
-    "kitzbuhel": "Clay", "gstaad": "Clay", "estoril": "Clay",
-    "marrakech": "Clay", "buenos aires": "Clay", "rio de janeiro": "Clay",
-    "houston": "Clay", "chile": "Clay", "cordoba": "Clay",
-    "geneva": "Clay", "lyon": "Clay", "zagreb": "Clay",
-    "casablanca": "Clay", "prostejov": "Clay",
-    # Grass
-    "wimbledon": "Grass", "halle": "Grass", "noventi open": "Grass",
-    "queen's": "Grass", "queens": "Grass", "eastbourne": "Grass",
-    "nottingham": "Grass", "s-hertogenbosch": "Grass", "hertogenbosch": "Grass",
-    "mallorca": "Grass", "newport": "Grass",
-    # Hard (explicit for high-traffic events)
-    "australian open": "Hard", "us open": "Hard",
-    "indian wells": "Hard", "bnp paribas open": "Hard",
-    "miami": "Hard", "canada": "Hard", "montreal": "Hard",
-    "toronto": "Hard", "national bank": "Hard",
-    "cincinnati": "Hard", "western & southern": "Hard",
-    "shanghai": "Hard", "china open": "Hard",
-    "paris": "Hard", "bercy": "Hard",
-    "vienna": "Hard", "erste bank": "Hard",
-    "basel": "Hard", "swiss indoors": "Hard",
-    "rotterdam": "Hard", "abn amro": "Hard",
-    "doha": "Hard", "dubai": "Hard",
-    "beijing": "Hard", "tokyo": "Hard", "rakuten": "Hard",
-    "acapulco": "Hard", "abierto mexicano": "Hard",
-    "washington": "Hard", "citi open": "Hard",
-    "winston-salem": "Hard", "san diego": "Hard",
-    "stockholm": "Hard", "st. petersburg": "Hard",
-    "metz": "Hard", "sofia": "Hard", "marseille": "Hard",
-    "montpellier": "Hard", "memphis": "Hard",
-    "dallas": "Hard", "delray beach": "Hard",
-    "tel aviv": "Hard", "astana": "Hard", "nur-sultan": "Hard",
-    "atp finals": "Hard", "nitto atp": "Hard", "barclays": "Hard",
-}
-
-# Tournament name → series (lowercase keyword matching)
-_GRAND_SLAM_KW   = {"australian open", "roland garros", "french open", "wimbledon", "us open"}
-_MASTERS_CUP_KW  = {"atp finals", "nitto atp", "barclays atp", "masters cup", "year-end championships"}
-_MASTERS_1000_KW = {
-    "indian wells", "bnp paribas open", "miami open", "miami",
-    "monte-carlo", "monte carlo", "madrid open", "madrid",
-    "internazionali", "rome", "canadian open", "canada",
-    "montreal", "toronto", "national bank open",
-    "western & southern", "cincinnati",
-    "china open", "beijing", "shanghai masters", "shanghai",
-    "paris masters", "paris", "bercy",
-}
-
-# Round name normalisation (API may return various spellings)
-_API_ROUND_MAP: dict[str, str] = {
-    "1st round": "1st Round",
-    "2nd round": "2nd Round",
-    "3rd round": "3rd Round",
-    "4th round": "4th Round",
-    "round of 16": "3rd Round",
-    "round of 32": "2nd Round",
-    "round of 64": "1st Round",
-    "round of 128": "1st Round",
-    "quarterfinal": "Quarterfinals",
-    "quarterfinals": "Quarterfinals",
-    "quarter-final": "Quarterfinals",
-    "quarter-finals": "Quarterfinals",
-    "semifinal": "Semifinals",
-    "semifinals": "Semifinals",
-    "semi-final": "Semifinals",
-    "semi-finals": "Semifinals",
-    "final": "The Final",
-    "the final": "The Final",
-    "round robin": "Round Robin",
-    "group stage": "Round Robin",
-}
-
-
-def _infer_surface_api(tournament_name: str) -> str:
-    name = tournament_name.lower()
-    for kw, surface in _SURFACE_MAP.items():
-        if kw in name:
-            return surface
-    return "Hard"  # majority of ATP events are hard court
-
-
-def _infer_series_api(tournament_name: str) -> str:
-    name = tournament_name.lower()
-    if any(k in name for k in _GRAND_SLAM_KW):
-        return "Grand Slam"
-    if any(k in name for k in _MASTERS_CUP_KW):
-        return "Masters Cup"
-    if any(k in name for k in _MASTERS_1000_KW):
-        return "Masters 1000"
-    if any(k in name for k in _ATP500):
-        return "ATP500"
-    return "ATP250"
-
-
-def _normalise_round(raw: str) -> str:
-    return _API_ROUND_MAP.get(raw.strip().lower(), raw.strip())
-
-
-def _score_from_sets(sets: list[dict], first_player_won: bool) -> str:
-    """Build '6-3 7-5' style score string from the API scores array."""
-    parts = []
-    for s in sorted(sets, key=lambda x: int(x.get("score_set", 0))):
-        a = s.get("score_first", "0") or "0"
-        b = s.get("score_second", "0") or "0"
-        if a == "0" and b == "0":
-            continue
-        if first_player_won:
-            parts.append(f"{a}-{b}")
-        else:
-            parts.append(f"{b}-{a}")
-    return " ".join(parts)
-
-
-def _apitennnis_headers() -> dict:
-    return {
-        "X-RapidAPI-Key": RAPIDAPI_KEY,
-        "X-RapidAPI-Host": _APITENNNIS_HOST,
-    }
-
-
-def get_apitennnis_standings() -> dict[str, tuple[int | None, float | None]]:
-    """Fetch current ATP singles standings. Returns {full_name: (rank, pts)}."""
-    try:
-        resp = requests.get(
-            _APITENNNIS_BASE,
-            headers=_apitennnis_headers(),
-            params={"method": "get_standings", "event_type_key": "265"},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        out: dict[str, tuple[int | None, float | None]] = {}
-        for entry in data.get("result", []):
-            name = str(entry.get("player", "")).strip()
-            try:
-                rank = int(entry.get("place", 0)) or None
-            except (ValueError, TypeError):
-                rank = None
-            try:
-                pts = float(str(entry.get("points", "0")).replace(",", "")) or None
-            except (ValueError, TypeError):
-                pts = None
-            if name:
-                out[name] = (rank, pts)
-        print(f"  ATP standings fetched: {len(out)} players")
-        return out
-    except Exception as exc:
-        print(f"  ⚠  Could not fetch ATP standings: {exc}")
-        return {}
-
-
-def download_apitennnis_range(date_start: str, date_stop: str) -> list[dict] | None:
-    """Download ATP singles fixtures from API-Tennis for a date range.
-
-    Queries in 3-month chunks to stay within response size limits.
-    Returns combined raw result list, or None on complete failure.
-    """
-    start = datetime.date.fromisoformat(date_start)
-    stop  = datetime.date.fromisoformat(date_stop)
-    all_results: list[dict] = []
-    chunk_start = start
-
-    while chunk_start <= stop:
-        # Advance in ~90-day chunks
-        chunk_end = min(chunk_start + datetime.timedelta(days=89), stop)
-        cs = chunk_start.isoformat()
-        ce = chunk_end.isoformat()
-        print(f"    chunk {cs} → {ce}")
-        try:
-            resp = requests.get(
-                _APITENNNIS_BASE,
-                headers=_apitennnis_headers(),
-                params={
-                    "method": "get_fixtures",
-                    "event_type_key": "265",  # ATP Singles
-                    "date_start": cs,
-                    "date_stop": ce,
-                },
-                timeout=60,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            if not data.get("success"):
-                print(f"    ⚠  API returned success=0: {data.get('error', '')}")
-            else:
-                chunk_results = data.get("result", [])
-                all_results.extend(chunk_results)
-                print(f"    {len(chunk_results):,} fixtures")
-        except Exception as exc:
-            print(f"    ⚠  chunk failed: {exc}")
-
-        chunk_start = chunk_end + datetime.timedelta(days=1)
-
-    if not all_results:
-        return None
-    return all_results
-
-
-def process_apitennnis(raw: list[dict], standings: dict[str, tuple]) -> pd.DataFrame:
-    """Convert API-Tennis fixture list to our CSV format."""
-    rows = []
-    skipped = 0
-
-    for m in raw:
-        # Only completed singles matches (no qualifiers, no retirements)
-        if str(m.get("event_status", "")).strip() != "Finished":
-            skipped += 1
-            continue
-        if m.get("event_qualification") is True:
-            continue
-
-        first_name  = str(m.get("event_first_player", "")).strip()
-        second_name = str(m.get("event_second_player", "")).strip()
-        winner_flag = str(m.get("event_winner", "")).strip()
-        if not first_name or not second_name or not winner_flag:
-            skipped += 1
-            continue
-
-        first_won   = (winner_flag == "First Player")
-        winner_full = first_name  if first_won else second_name
-        loser_full  = second_name if first_won else first_name
-
-        # Convert "Jannik Sinner" → "Sinner J."
-        winner_short = _sackmann_name(winner_full)
-        loser_short  = _sackmann_name(loser_full)
-
-        tournament = str(m.get("tournament_name", "")).strip()
-        date_str   = str(m.get("event_date", "")).strip()
-        raw_round  = str(m.get("tournament_round", "1st Round")).strip()
-        round_name = _normalise_round(raw_round)
-
-        series  = _infer_series_api(tournament)
-        surface = _infer_surface_api(tournament)
-        best_of = 5 if series == "Grand Slam" else 3
-        court   = "Indoor" if any(t in tournament.lower() for t in _INDOOR) else "Outdoor"
-        score   = _score_from_sets(m.get("scores", []), first_won)
-
-        # Rankings from current standings (best available for new matches)
-        w_rank, w_pts = standings.get(winner_full, (None, None))
-        l_rank, l_pts = standings.get(loser_full,  (None, None))
-
-        # Deterministic P1/P2 assignment (matches Sackmann logic)
-        ind  = hash(date_str + winner_short + loser_short) % 2
-        p1   = winner_short if ind == 0 else loser_short
-        p2   = winner_short if ind == 1 else loser_short
-        r1   = w_rank if ind == 0 else l_rank
-        r2   = w_rank if ind == 1 else l_rank
-        pt1  = w_pts  if ind == 0 else l_pts
-        pt2  = w_pts  if ind == 1 else l_pts
-
-        rows.append({
-            "Tournament": tournament,
-            "Date":       date_str,
-            "Series":     series,
-            "Court":      court,
-            "Surface":    surface,
-            "Round":      round_name,
-            "Best of":    best_of,
-            "Player_1":   p1,
-            "Player_2":   p2,
-            "Winner":     winner_short,
-            "Rank_1":     r1,
-            "Rank_2":     r2,
-            "Pts_1":      pt1,
-            "Pts_2":      pt2,
-            "Odd_1":      np.nan,
-            "Odd_2":      np.nan,
-            "Score":      score,
-        })
-
-    df = pd.DataFrame(rows)
-    if df.empty:
-        return df
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    df = df[df["Date"].notna()].copy()
-    print(f"  {len(df):,} completed matches parsed ({skipped} skipped/unfinished)")
-    return df
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Processing (matches the Kaggle notebook logic)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -674,11 +374,6 @@ def main() -> None:
 
     # ── 2. Download & process recent years ──────────────────
     new_frames: list[pd.DataFrame] = []
-    today = datetime.date.today()
-
-    # Fetch ATP standings once (used by API-Tennis fallback for rank/pts)
-    _standings: dict = {}
-    _standings_fetched = False
 
     for year in REFRESH_YEARS:
         print(f"\nYear {year}")
@@ -687,26 +382,10 @@ def main() -> None:
             processed = process_raw(raw)
         else:
             sackmann_raw = download_sackmann_year(year)
-            if sackmann_raw is not None and not sackmann_raw.empty:
-                processed = process_sackmann(sackmann_raw)
-            else:
-                # ── API-Tennis fallback ──────────────────────────────
-                if not RAPIDAPI_KEY:
-                    print(f"  (no data from any source — add RAPIDAPI_KEY to .env for API-Tennis fallback)")
-                    continue
-                print(f"  API-Tennis fallback")
-                year_start = f"{year}-01-01"
-                year_end   = today.isoformat() if year == today.year else f"{year}-12-31"
-                api_raw = download_apitennnis_range(year_start, year_end)
-                if not api_raw:
-                    print(f"  (API-Tennis returned no data)")
-                    continue
-                if not _standings_fetched:
-                    print("  Fetching ATP standings for rank/points lookup…")
-                    _standings = get_apitennnis_standings()
-                    _standings_fetched = True
-                processed = process_apitennnis(api_raw, _standings)
-
+            if sackmann_raw is None or sackmann_raw.empty:
+                print(f"  (no data from any source)")
+                continue
+            processed = process_sackmann(sackmann_raw)
         if processed.empty:
             continue
 
