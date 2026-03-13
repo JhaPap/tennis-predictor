@@ -1,5 +1,5 @@
 {
-  "trained_at": "2026-03-11T13:56:55.541358",
+  "trained_at": "2026-03-13T16:39:31.789533",
   "feature_columns": [
     "elo_diff",
     "surface_elo_diff",
@@ -63,260 +63,260 @@
     "bp_edge"
   ],
   "test_metrics": {
-    "auc": 0.7219232476811146,
-    "brier": 0.21359604660186898,
-    "accuracy": 0.6501685293595885
+    "auc": 0.7183508936456761,
+    "brier": 0.2168444513729629,
+    "accuracy": 0.6444917509313465
   },
   "best_hyperparameters": {
-    "max_depth": 3,
-    "learning_rate": 0.037007660759953265,
-    "subsample": 0.7655046379676967,
-    "colsample_bytree": 0.8418787024191524,
-    "min_child_weight": 1,
-    "gamma": 0.023365612912297863,
-    "reg_alpha": 0.15474561420457777,
-    "reg_lambda": 1.4748876495017624
+    "max_depth": 4,
+    "learning_rate": 0.035097190502844995,
+    "subsample": 0.632922874670813,
+    "colsample_bytree": 0.868689183404919,
+    "min_child_weight": 14,
+    "gamma": 0.2516480375354807,
+    "reg_alpha": 0.4725394660349541,
+    "reg_lambda": 1.513787770770414
   },
   "feature_importance": [
     {
       "feature": "elo_diff",
-      "importance": 0.1856987029314041
-    },
-    {
-      "feature": "surface_elo_diff",
-      "importance": 0.08255620300769806
+      "importance": 0.149115651845932
     },
     {
       "feature": "log_rank_ratio",
-      "importance": 0.0766482725739479
+      "importance": 0.0768071860074997
+    },
+    {
+      "feature": "surface_elo_diff",
+      "importance": 0.05251588299870491
     },
     {
       "feature": "rank_diff",
-      "importance": 0.029278220608830452
-    },
-    {
-      "feature": "winrate_diff_overall",
-      "importance": 0.025480782613158226
+      "importance": 0.023632453754544258
     },
     {
       "feature": "is_best_of_5",
-      "importance": 0.020533109083771706
-    },
-    {
-      "feature": "winrate_diff_surface",
-      "importance": 0.020180853083729744
-    },
-    {
-      "feature": "pts_diff",
-      "importance": 0.020145438611507416
-    },
-    {
-      "feature": "p1_winrate_last20",
-      "importance": 0.01927191950380802
-    },
-    {
-      "feature": "p1_winrate_surface",
-      "importance": 0.01639755442738533
+      "importance": 0.019703246653079987
     },
     {
       "feature": "p2_winrate_last5",
-      "importance": 0.01597846858203411
+      "importance": 0.017321299761533737
     },
     {
-      "feature": "series_tier",
-      "importance": 0.015048938803374767
-    },
-    {
-      "feature": "days_since_last_match_p2",
-      "importance": 0.014767896384000778
-    },
-    {
-      "feature": "p1_net_win_rate",
-      "importance": 0.013920384459197521
-    },
-    {
-      "feature": "days_since_last_match_p1",
-      "importance": 0.013876577839255333
-    },
-    {
-      "feature": "p2_winrate_surface",
-      "importance": 0.013427811674773693
-    },
-    {
-      "feature": "p1_bp_conversion_rate",
-      "importance": 0.013409887440502644
-    },
-    {
-      "feature": "tournament_winrate_diff",
-      "importance": 0.012882694602012634
-    },
-    {
-      "feature": "is_grand_slam",
-      "importance": 0.012708050198853016
+      "feature": "winrate_diff_surface",
+      "importance": 0.01707281731069088
     },
     {
       "feature": "p1_return_win_pct",
-      "importance": 0.01263075228780508
+      "importance": 0.01649646833539009
     },
     {
-      "feature": "p1_winrate_overall",
-      "importance": 0.01246791984885931
+      "feature": "p1_winrate_last20",
+      "importance": 0.016117878258228302
     },
     {
-      "feature": "p2_bp_conversion_rate",
-      "importance": 0.012325314804911613
+      "feature": "pts_diff",
+      "importance": 0.015338605269789696
     },
     {
-      "feature": "serve_edge",
-      "importance": 0.012287352234125137
-    },
-    {
-      "feature": "p2_surface_matches_played",
-      "importance": 0.012058114632964134
-    },
-    {
-      "feature": "p1_surface_matches_played",
-      "importance": 0.011635958217084408
-    },
-    {
-      "feature": "p2_tournament_winrate",
-      "importance": 0.011609305627644062
-    },
-    {
-      "feature": "h2h_winrate_p1",
-      "importance": 0.011539594270288944
-    },
-    {
-      "feature": "p2_winrate_last20",
-      "importance": 0.011510373093187809
-    },
-    {
-      "feature": "p2_ue_rate",
-      "importance": 0.011503035202622414
-    },
-    {
-      "feature": "p2_tournament_matches",
-      "importance": 0.01137558650225401
-    },
-    {
-      "feature": "p2_df_rate",
-      "importance": 0.011113125830888748
-    },
-    {
-      "feature": "p1_first_serve_win_pct",
-      "importance": 0.010993761010468006
-    },
-    {
-      "feature": "p2_matches_played_ytd",
-      "importance": 0.01073861587792635
-    },
-    {
-      "feature": "p1_tournament_winrate",
-      "importance": 0.010684385895729065
-    },
-    {
-      "feature": "p2_ace_rate",
-      "importance": 0.010583335533738136
+      "feature": "series_tier",
+      "importance": 0.015068816021084785
     },
     {
       "feature": "p2_return_win_pct",
-      "importance": 0.01055373065173626
+      "importance": 0.014468454755842686
     },
     {
-      "feature": "p1_tournament_matches",
-      "importance": 0.010519464500248432
+      "feature": "days_since_last_match_p1",
+      "importance": 0.014118150807917118
     },
     {
-      "feature": "p1_bp_save_rate",
-      "importance": 0.010506515391170979
+      "feature": "days_since_last_match_p2",
+      "importance": 0.013883274048566818
     },
     {
-      "feature": "p2_net_win_rate",
-      "importance": 0.01049334928393364
+      "feature": "winrate_diff_overall",
+      "importance": 0.013866336084902287
     },
     {
-      "feature": "bp_edge",
-      "importance": 0.010287454351782799
+      "feature": "is_grand_slam",
+      "importance": 0.013822538778185844
     },
     {
-      "feature": "p1_winner_rate",
-      "importance": 0.010215150192379951
+      "feature": "p1_winrate_surface",
+      "importance": 0.013806603848934174
     },
     {
-      "feature": "p1_matches_played_ytd",
-      "importance": 0.010008093900978565
+      "feature": "h2h_winrate_p1",
+      "importance": 0.013764731585979462
     },
     {
-      "feature": "return_edge",
-      "importance": 0.00957292877137661
+      "feature": "p2_surface_matches_played",
+      "importance": 0.013612409122288227
     },
     {
-      "feature": "p1_winrate_last5",
-      "importance": 0.009368994273245335
+      "feature": "p2_matches_played_ytd",
+      "importance": 0.013251122087240219
     },
     {
-      "feature": "p2_first_serve_pct",
-      "importance": 0.009300618432462215
+      "feature": "p2_winrate_surface",
+      "importance": 0.013088994659483433
     },
     {
-      "feature": "p2_winner_rate",
-      "importance": 0.009156536310911179
+      "feature": "p1_winrate_overall",
+      "importance": 0.01308260578662157
     },
     {
-      "feature": "p1_first_serve_pct",
-      "importance": 0.00894573237746954
+      "feature": "p1_surface_matches_played",
+      "importance": 0.013005140237510204
     },
     {
-      "feature": "p2_winrate_overall",
-      "importance": 0.008910378441214561
+      "feature": "p2_winrate_last20",
+      "importance": 0.01286156103014946
     },
     {
-      "feature": "p1_ue_rate",
-      "importance": 0.008520605973899364
-    },
-    {
-      "feature": "p1_ace_rate",
-      "importance": 0.008051070384681225
-    },
-    {
-      "feature": "surface_hard",
-      "importance": 0.007289702072739601
-    },
-    {
-      "feature": "h2h_total",
-      "importance": 0.006703652907162905
-    },
-    {
-      "feature": "p2_first_serve_win_pct",
-      "importance": 0.006377717480063438
-    },
-    {
-      "feature": "p1_df_rate",
-      "importance": 0.006306433584541082
-    },
-    {
-      "feature": "p2_bp_save_rate",
-      "importance": 0.005955980159342289
-    },
-    {
-      "feature": "h2h_p1_wins",
-      "importance": 0.005948069039732218
-    },
-    {
-      "feature": "is_indoor",
-      "importance": 0.005248590838164091
+      "feature": "p2_ace_rate",
+      "importance": 0.012801322154700756
     },
     {
       "feature": "round_encoded",
-      "importance": 0.004490951541811228
+      "importance": 0.012737220153212547
     },
     {
-      "feature": "h2h_surface_p1_wins",
-      "importance": 0.0
+      "feature": "p2_bp_conversion_rate",
+      "importance": 0.012730570510029793
+    },
+    {
+      "feature": "p1_winrate_last5",
+      "importance": 0.012579517439007759
+    },
+    {
+      "feature": "p2_winner_rate",
+      "importance": 0.012373783625662327
     },
     {
       "feature": "surface_clay",
-      "importance": 0.0
+      "importance": 0.01232051569968462
+    },
+    {
+      "feature": "return_edge",
+      "importance": 0.012007348239421844
+    },
+    {
+      "feature": "p1_bp_conversion_rate",
+      "importance": 0.011944490484893322
+    },
+    {
+      "feature": "p2_bp_save_rate",
+      "importance": 0.011931749060750008
+    },
+    {
+      "feature": "p1_net_win_rate",
+      "importance": 0.011895490810275078
+    },
+    {
+      "feature": "p1_bp_save_rate",
+      "importance": 0.011820544488728046
+    },
+    {
+      "feature": "p1_matches_played_ytd",
+      "importance": 0.01176793035119772
+    },
+    {
+      "feature": "p2_df_rate",
+      "importance": 0.011728980578482151
+    },
+    {
+      "feature": "serve_edge",
+      "importance": 0.01171052549034357
+    },
+    {
+      "feature": "is_indoor",
+      "importance": 0.011679071001708508
+    },
+    {
+      "feature": "p1_df_rate",
+      "importance": 0.011646779254078865
+    },
+    {
+      "feature": "tournament_winrate_diff",
+      "importance": 0.01162293553352356
+    },
+    {
+      "feature": "p1_first_serve_pct",
+      "importance": 0.011605535633862019
+    },
+    {
+      "feature": "p2_first_serve_pct",
+      "importance": 0.011598640121519566
+    },
+    {
+      "feature": "p2_winrate_overall",
+      "importance": 0.011583320796489716
+    },
+    {
+      "feature": "p2_first_serve_win_pct",
+      "importance": 0.011406289413571358
+    },
+    {
+      "feature": "p2_ue_rate",
+      "importance": 0.011365791782736778
+    },
+    {
+      "feature": "p1_tournament_matches",
+      "importance": 0.011284338310360909
+    },
+    {
+      "feature": "h2h_p1_wins",
+      "importance": 0.010905180126428604
+    },
+    {
+      "feature": "p2_net_win_rate",
+      "importance": 0.01080968976020813
+    },
+    {
+      "feature": "p1_ace_rate",
+      "importance": 0.010798043571412563
+    },
+    {
+      "feature": "p2_tournament_winrate",
+      "importance": 0.010765159502625465
+    },
+    {
+      "feature": "p1_first_serve_win_pct",
+      "importance": 0.010733514092862606
+    },
+    {
+      "feature": "p2_tournament_matches",
+      "importance": 0.01069495640695095
+    },
+    {
+      "feature": "bp_edge",
+      "importance": 0.01067825872451067
+    },
+    {
+      "feature": "p1_tournament_winrate",
+      "importance": 0.010615157894790173
+    },
+    {
+      "feature": "p1_ue_rate",
+      "importance": 0.010596772655844688
+    },
+    {
+      "feature": "p1_winner_rate",
+      "importance": 0.010575796477496624
+    },
+    {
+      "feature": "h2h_total",
+      "importance": 0.009772487916052341
+    },
+    {
+      "feature": "h2h_surface_p1_wins",
+      "importance": 0.009667495265603065
+    },
+    {
+      "feature": "surface_hard",
+      "importance": 0.003422508016228676
     }
   ]
 }

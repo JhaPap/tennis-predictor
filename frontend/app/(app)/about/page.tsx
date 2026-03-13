@@ -125,8 +125,8 @@ const STATS = [
   { label: "Matches Analyzed", value: "67,199", icon: Database, color: "text-blue-400" },
   { label: "Active Players", value: "457", icon: Activity, color: "text-orange-400" },
   { label: "Engineered Features", value: "60", icon: Layers, color: "text-purple-400" },
-  { label: "Test Accuracy", value: "65.0%", icon: Target, color: "text-red-400" },
-  { label: "AUC Score", value: "0.722", icon: Gauge, color: "text-cyan-400" },
+  { label: "Test Accuracy", value: "64.5%", icon: Target, color: "text-red-400" },
+  { label: "AUC Score", value: "0.718", icon: Gauge, color: "text-cyan-400" },
   { label: "Years of Data", value: "26+", icon: BarChart3, color: "text-primary" },
 ];
 
@@ -206,7 +206,7 @@ export default function AboutPage() {
         </h1>
         <p className="text-muted-foreground mt-2 max-w-2xl leading-relaxed">
           An ML-powered ATP match prediction platform built on 26 years of
-          professional tennis data. XGBoost + Elo ratings drive a 65.0% accurate
+          professional tennis data. XGBoost + Elo ratings drive a 64.5% accurate
           model across 60 engineered features — including serve/return stats,
           break-point clutch performance, net play, and shot quality from the Match
           Charting Project. Claude (Anthropic) layers natural-language analysis on top.
@@ -270,7 +270,7 @@ export default function AboutPage() {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 An XGBoost classifier, tuned with 200 Optuna trials and
                 calibrated with isotonic regression, outputs a win probability.
-                Achieves 65.0% accuracy and 0.722 AUC on held-out 2024+
+                Achieves 64.5% accuracy and 0.718 AUC on held-out 2024+
                 matches.
               </p>
             </CardContent>
